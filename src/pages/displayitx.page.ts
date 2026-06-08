@@ -1,0 +1,45 @@
+import { type Page, type Locator } from '@playwright/test';
+import { BasePage } from '@pages/base.page';
+import type { SiteConfig } from '@site-types/site-config.types';
+
+export class DisplayItXPage extends BasePage {
+  readonly pageHeading: Locator;
+  readonly featureSections: Locator;
+  readonly faqLink: Locator;
+  readonly brochureLink: Locator;
+  readonly tutorialLink: Locator;
+  readonly applicationsVideoLink: Locator;
+  readonly orderLink: Locator;
+  readonly allCtaLinks: Locator;
+
+  constructor(page: Page, config: SiteConfig) {
+    super(page, config);
+    this.pageHeading = page.locator('h1, h2').first();
+    this.featureSections = page.locator('h2');
+    this.faqLink = page.locator('a[href*="DisplayItX-FAQ"]');
+    this.brochureLink = page.locator('a[href*="DisplayItXBrochure"]');
+    this.tutorialLink = page.locator('a[href*="DX_Tutorial"], a[href*="tutorial" i]');
+    this.applicationsVideoLink = page.locator('a[href*="applications.webm"], a[href*="applications" i]');
+    this.orderLink = page.locator('a[href*="cognitoforms"]');
+    this.allCtaLinks = page.locator('a[href*=".pdf"], a[href*=".mp4"], a[href*=".webm"], a[href*="FAQ"]');
+  }
+
+  async navigate(): Promise<void> {
+    const base = this.config.url.replace(/\/$/, '');
+    await this.page.goto(`${base}/DisplayItX-Product.php`, { waitUntil: 'domcontentloaded' });
+  }
+
+  async getFeatureCount(): Promise<number> {
+    return this.featureSections.count();
+  }
+
+  async getFeatureHeadings(): Promise<string[]> {
+    const items = await this.featureSections.all();
+    const texts: string[] = [];
+    for (const item of items) {
+      const text = (await item.textContent())?.trim() ?? '';
+      if (text) texts.push(text);
+    }
+    return texts;
+  }
+}

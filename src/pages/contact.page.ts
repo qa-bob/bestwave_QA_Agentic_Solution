@@ -1,13 +1,6 @@
-/**
- * src/pages/contact.page.ts
- *
- * ContactFormPage provides methods for inspecting and interacting with
- * contact forms.  It explicitly does NOT submit forms to avoid sending
- * spam messages to real company inboxes.
- */
-
-import { type Locator } from '@playwright/test';
+import { type Page, type Locator } from '@playwright/test';
 import { BasePage } from '@pages/base.page';
+import type { SiteConfig } from '@site-types/site-config.types';
 
 export interface FormFieldInfo {
   name: string;
@@ -16,45 +9,60 @@ export interface FormFieldInfo {
 }
 
 export class ContactFormPage extends BasePage {
-  // ── Form discovery ───────────────────────────────────────────────────────────
+  // ── Bestwave-specific field locators ─────────────────────────────────────────
+  readonly nameField: Locator;
+  readonly companyField: Locator;
+  readonly emailField: Locator;
+  readonly phoneField: Locator;
+  readonly sendToDropdown: Locator;
+  readonly subjectDropdown: Locator;
+  readonly messageTextarea: Locator;
+  readonly submitButton: Locator;
 
-  /**
-   * Find the primary contact form on the current page.
-   * Returns null if no form is found.
-   *
-   * Strategy (in priority order):
-   *  1. <form> with action containing "contact"
-   *  2. <form> containing an email input
-   *  3. First <form> on the page
-   */
+  constructor(page: Page, config: SiteConfig) {
+    super(page, config);
+    // Use label-text matching first; fall back to positional/attribute selectors
+    this.nameField = page.getByLabel(/^name/i).first();
+    this.companyField = page.getByLabel(/company/i).first();
+    this.emailField = page.getByLabel(/email/i).first();
+    this.phoneField = page.getByLabel(/phone/i).first();
+    this.sendToDropdown = page.getByLabel(/send to/i).first();
+    this.subjectDropdown = page.getByLabel(/subject/i).first();
+    this.messageTextarea = page.locator('textarea').first();
+    this.submitButton = page.locator('input[type="submit"], button[type="submit"]')
+      .or(page.getByRole('button', { name: /send/i }))
+      .first();
+  }
+
+  async navigateToContactPage(): Promise<void> {
+    const base = this.config.url.replace(/\/$/, '');
+    await this.page.goto(`${base}/Best-Wave-Contact-Form.php`, { waitUntil: 'domcontentloaded' });
+  }
+
+  // ── Generic form discovery ───────────────────────────────────────────────────
+
   async findContactForm(): Promise<Locator | null> {
-    // Strategy 1: form whose action URL hints "contact"
     const byAction = this.page.locator('form[action*="contact" i], form[action*="message" i]');
     if (await byAction.count() > 0) return byAction.first();
 
-    // Strategy 2: form containing an email field
     const withEmail = this.page.locator('form').filter({
       has: this.page.locator('input[type="email"], input[name*="email" i]'),
     });
     if (await withEmail.count() > 0) return withEmail.first();
 
-    // Strategy 3: any form at all
     const anyForm = this.page.locator('form').first();
     if (await anyForm.count() > 0) return anyForm;
 
     return null;
   }
 
-  // ── Field inspection ─────────────────────────────────────────────────────────
-
-  /**
-   * Return metadata about each input/textarea/select inside the contact form.
-   */
   async getFormFields(): Promise<FormFieldInfo[]> {
     const form = await this.findContactForm();
     if (!form) return [];
 
-    const inputLocator = form.locator('input:not([type="hidden"]):not([type="submit"]):not([type="button"]), textarea, select');
+    const inputLocator = form.locator(
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]), textarea, select'
+    );
     const count = await inputLocator.count();
     const fields: FormFieldInfo[] = [];
 
@@ -65,7 +73,8 @@ export class ContactFormPage extends BasePage {
         (await el.getAttribute('id')) ??
         (await el.getAttribute('placeholder')) ??
         `field-${i}`;
-      const type = (await el.getAttribute('type')) ?? (await el.evaluate<string>((node) => node.tagName.toLowerCase()));
+      const type = (await el.getAttribute('type')) ??
+        (await el.evaluate<string>((node) => node.tagName.toLowerCase()));
       const required =
         (await el.getAttribute('required')) !== null ||
         (await el.getAttribute('aria-required')) === 'true';
@@ -76,9 +85,6 @@ export class ContactFormPage extends BasePage {
     return fields;
   }
 
-  // ── Field presence helpers ───────────────────────────────────────────────────
-
-  /** Returns true if the form contains an email input field. */
   async hasEmailField(): Promise<boolean> {
     const form = await this.findContactForm();
     if (!form) return false;
@@ -88,7 +94,6 @@ export class ContactFormPage extends BasePage {
     return (await emailField.count()) > 0;
   }
 
-  /** Returns true if the form contains a name input field. */
   async hasNameField(): Promise<boolean> {
     const form = await this.findContactForm();
     if (!form) return false;
@@ -98,28 +103,20 @@ export class ContactFormPage extends BasePage {
     return (await nameField.count()) > 0;
   }
 
-  /** Returns true if the form has a submit button. */
   async hasSubmitButton(): Promise<boolean> {
     const form = await this.findContactForm();
     if (!form) return false;
+
     const submit = form.locator(
       'button[type="submit"], input[type="submit"], button:not([type="button"]):not([type="reset"])'
     ).filter({ hasText: /submit|send|contact|get in touch|reach out/i });
 
-    // Also accept any <button> inside the form (many forms omit type="submit")
     if (await submit.count() > 0) return true;
 
     const anyButton = form.locator('button, input[type="submit"]');
     return (await anyButton.count()) > 0;
   }
 
-  // ── Form filling (without submission) ────────────────────────────────────────
-
-  /**
-   * Fill form fields with the provided key→value map.
-   * Keys are matched against field name, id, and placeholder attributes.
-   * Does NOT click submit.
-   */
   async fillForm(data: Record<string, string>): Promise<void> {
     const form = await this.findContactForm();
     if (!form) throw new Error('[ContactFormPage] No contact form found on this page.');
@@ -136,19 +133,17 @@ export class ContactFormPage extends BasePage {
     }
   }
 
-  // ── High-level validation ────────────────────────────────────────────────────
-
-  /**
-   * Returns true if a contact form is present and appears to be functional
-   * (has at minimum an email field and a submit button).
-   */
   async validateFormPresence(): Promise<boolean> {
     const form = await this.findContactForm();
     if (!form) return false;
 
-    const hasEmail = await this.hasEmailField();
     const hasSubmit = await this.hasSubmitButton();
+    return hasSubmit;
+  }
 
-    return hasEmail && hasSubmit;
+  async getSelectOptions(selectLocator: Locator): Promise<string[]> {
+    return selectLocator.locator('option').evaluateAll(
+      (opts) => opts.map((o) => (o as HTMLOptionElement).textContent?.trim() ?? '')
+    );
   }
 }
