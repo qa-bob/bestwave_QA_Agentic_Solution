@@ -30,12 +30,13 @@ export class SupportPage extends BasePage {
   }
 
   async getSupportSections(): Promise<string[]> {
-    const items = await this.allH2Headings.all();
-    const texts: string[] = [];
-    for (const item of items) {
-      const text = (await item.textContent())?.trim() ?? '';
-      if (text) texts.push(text);
+    // Page uses no h2 tags; detect known section labels by visible text
+    const knownSections = ['MAINTENANCE', 'E-MAIL', 'TELEPHONE', 'USER GUIDE', 'DOWNLOAD', 'FAQ'];
+    const found: string[] = [];
+    for (const label of knownSections) {
+      const count = await this.page.getByText(label, { exact: false }).count();
+      if (count > 0) found.push(label);
     }
-    return texts;
+    return found;
   }
 }

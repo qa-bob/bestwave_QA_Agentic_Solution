@@ -24,17 +24,29 @@ export class NavigationPage extends BasePage {
 
   /**
    * Return the primary navigation locator.
-   * Tries role="navigation" first, then <nav>, then header-scoped links.
+   * Site uses a <ul> list without <nav> or role="navigation".
+   * Identified by containing a link to the homepage (index.php).
    */
+  // Nav uses a <ul> list; Home link may be absolute or relative, so use partial match.
   private getNavLocator(): Locator {
-    return this.page.locator('nav, [role="navigation"]').first();
+    return this.page
+      .locator('ul')
+      .filter({ has: this.page.locator('a[href*="index.php"]') })
+      .first();
   }
 
-  /** Return true if a navigation element is visible on the page. */
+  /** Return true if nav links are visible on the page. */
   async isNavVisible(): Promise<boolean> {
-    const nav = this.getNavLocator();
-    if (await nav.count() === 0) return false;
-    return nav.isVisible();
+    // Check for any known nav link being visible rather than a <nav> container
+    const candidates = [
+      this.page.locator('a[href*="About-Best-Wave"]').first(),
+      this.page.locator('a[href*="Best-Wave-Products"]').first(),
+      this.page.locator('a[href*="Best-Wave-Contact"]').first(),
+    ];
+    for (const link of candidates) {
+      if (await link.count() > 0 && await link.isVisible()) return true;
+    }
+    return false;
   }
 
   // ── Nav links ────────────────────────────────────────────────────────────────

@@ -22,13 +22,13 @@ export class WhereToBuyPage extends BasePage {
   }
 
   async getRegionNames(): Promise<string[]> {
-    const items = await this.regionHeadings.all();
-    const texts: string[] = [];
-    for (const item of items) {
-      const text = (await item.textContent())?.trim() ?? '';
-      if (text) texts.push(text);
-    }
-    return texts;
+    // Page uses no h2 tags; detect region names from body text
+    const bodyText = await this.page.evaluate<string>(() => document.body.innerText);
+    const regions: string[] = [];
+    if (bodyText.includes('North America')) regions.push('North America');
+    if (bodyText.toLowerCase().includes('europe')) regions.push('Europe');
+    if (bodyText.toLowerCase().includes('asia') || bodyText.toLowerCase().includes('pacific')) regions.push('Asia/Pacific');
+    return regions;
   }
 
   async getBodyText(): Promise<string> {

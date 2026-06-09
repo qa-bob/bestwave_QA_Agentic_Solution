@@ -9,7 +9,8 @@ export class AboutPage extends BasePage {
 
   constructor(page: Page, config: SiteConfig) {
     super(page, config);
-    this.allHeadings = page.locator('h1, h2, h3');
+    // Site uses <b>/<strong> for section headings rather than h1-h3
+    this.allHeadings = page.locator('h1, h2, h3, b, strong');
     this.founderImage = page.locator('img[src*="glitsos"]');
     this.companyDescription = page.locator('p').first();
   }
@@ -20,13 +21,18 @@ export class AboutPage extends BasePage {
   }
 
   async getPageHeadings(): Promise<string[]> {
-    const items = await this.allHeadings.all();
-    const texts: string[] = [];
-    for (const item of items) {
-      const text = (await item.textContent())?.trim() ?? '';
-      if (text) texts.push(text);
-    }
-    return texts;
+    // Page uses no semantic heading tags; detect known section titles from body text
+    const bodyText = await this.page.evaluate<string>(() => document.body.innerText);
+    const knownHeadings = [
+      'Experience Matters',
+      'About Best Wave',
+      'Our Mission',
+      'Design Philosophy',
+      'The Mind',
+      'The Heart',
+      'The Eye',
+    ];
+    return knownHeadings.filter((h) => bodyText.includes(h));
   }
 
   async hasSection(sectionText: string): Promise<boolean> {

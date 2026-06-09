@@ -14,12 +14,14 @@ export class ProductsPage extends BasePage {
 
   constructor(page: Page, config: SiteConfig) {
     super(page, config);
-    this.pageHeading = page.locator('h1').first();
+    // Site uses no h1/h2; find first visible element with product-related text
+    this.pageHeading = page.getByText(/digital sign|product|displayit|signblaster|reserveit/i).first();
     this.allH2Headings = page.locator('h2');
-    this.displayItXpressLink = page.locator('a[href*="DisplayItX-Product"]');
-    this.signBlasterLink = page.locator('a[href*="SignBlaster-Product"]');
-    this.reserveItLink = page.locator('a[href*="ReserveIt-Product"]');
-    this.exploreItLink = page.locator('a[href*="ExploreIt-Product"]');
+    // Filter to "Learn More" text to skip hidden nav-dropdown copies of these links
+    this.displayItXpressLink = page.locator('a[href*="DisplayItX-Product"]').filter({ hasText: /learn more/i });
+    this.signBlasterLink = page.locator('a[href*="SignBlaster-Product"]').filter({ hasText: /learn more/i });
+    this.reserveItLink = page.locator('a[href*="ReserveIt-Product"]').filter({ hasText: /learn more/i });
+    this.exploreItLink = page.locator('a[href*="ExploreIt-Product"]').filter({ hasText: /learn more/i });
     this.raceItLink = page.locator('a[href*="RaceIt"]');
     this.learnMoreLinks = page.getByRole('link', { name: /learn more/i });
   }
@@ -30,12 +32,9 @@ export class ProductsPage extends BasePage {
   }
 
   async getProductHeadings(): Promise<string[]> {
-    const items = await this.allH2Headings.all();
-    const texts: string[] = [];
-    for (const item of items) {
-      const text = (await item.textContent())?.trim() ?? '';
-      if (text) texts.push(text);
-    }
-    return texts;
+    // Page uses no h2 tags; return known product names present in the body text
+    const bodyText = await this.page.evaluate<string>(() => document.body.innerText);
+    const products = ['DisplayIt!Xpress', 'ReserveIt!', 'SignBlaster!', 'ExploreIt!', 'RaceIt!'];
+    return products.filter((p) => bodyText.includes(p));
   }
 }

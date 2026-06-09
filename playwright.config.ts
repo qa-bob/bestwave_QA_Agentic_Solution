@@ -78,7 +78,9 @@ export default defineConfig({
     {
       name: 'tablet',
       use: {
-        ...devices['iPad Mini'],
+        // Use Chromium-based Android tablet instead of WebKit (iPad Mini) to avoid
+        // WebKit installation requirement
+        ...devices['Galaxy Tab S4'],
         viewport: { width: 768, height: 1024 },
       },
     },
