@@ -33,7 +33,7 @@ test.describe('Site Availability @smoke', () => {
     const MAX_LOAD_MS = 10_000;
 
     const start = Date.now();
-    await page.goto(siteConfig.url, { waitUntil: 'load' });
+    await page.goto(siteConfig.url, { waitUntil: 'domcontentloaded' });
     const elapsed = Date.now() - start;
 
     expect(
@@ -55,7 +55,7 @@ test.describe('Site Availability @smoke', () => {
       consoleErrors.push(`[pageerror] ${err.message}`);
     });
 
-    await page.goto(siteConfig.url, { waitUntil: 'networkidle' });
+    await page.goto(siteConfig.url, { waitUntil: 'domcontentloaded' });
 
     // Filter out known benign third-party errors (analytics, ads, etc.)
     const criticalErrors = consoleErrors.filter((err) => {

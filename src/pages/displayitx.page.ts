@@ -14,8 +14,10 @@ export class DisplayItXPage extends BasePage {
 
   constructor(page: Page, config: SiteConfig) {
     super(page, config);
-    // Page uses <strong>/<b> for headings; find first with product-related text
-    this.pageHeading = page.locator('strong, b').filter({ hasText: /displayit|digital sign|powerpoint|sign/i }).first();
+    // Page uses <strong> for headings; skip hidden nav-dropdown copies via :visible
+    this.pageHeading = page.locator('strong:visible, b:visible')
+      .filter({ hasText: /displayit|digital sign|powerpoint|sign/i })
+      .first();
     // Count <strong>/<b> elements as feature section markers
     this.featureSections = page.locator('strong, b').filter({ hasText: /.{10,}/ });
     // Exclude hidden nav-dropdown copies by requiring no <ul> ancestor
