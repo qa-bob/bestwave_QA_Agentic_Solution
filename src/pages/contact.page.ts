@@ -74,7 +74,7 @@ export class ContactFormPage extends BasePage {
         (await el.getAttribute('placeholder')) ??
         `field-${i}`;
       const type = (await el.getAttribute('type')) ??
-        (await el.evaluate<string>((node) => node.tagName.toLowerCase()));
+        (await el.evaluate((node) => node.tagName.toLowerCase()));
       const required =
         (await el.getAttribute('required')) !== null ||
         (await el.getAttribute('aria-required')) === 'true';
