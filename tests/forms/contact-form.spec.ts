@@ -183,10 +183,24 @@ test.describe('Contact Form @forms', () => {
     }
 
     const submitBtn = form.locator('input[type="submit"], button[type="submit"], button').last();
+
+    // Block every non-GET request so nothing can actually be submitted, even
+    // if the form posts via fetch/XHR or validation is missing.
+    const submissionAttempts: string[] = [];
+    await page.route('**/*', async (route) => {
+      const req = route.request();
+      if (req.method() !== 'GET' && req.method() !== 'HEAD') {
+        submissionAttempts.push(`${req.method()} ${req.url()}`);
+        await route.abort();
+        return;
+      }
+      await route.continue();
+    });
+
     await submitBtn.click({ force: true });
 
-    // Site uses PHP server-side validation; an empty submission triggers a POST but
-    // should return the user to a Best Wave page (error page or redirect back)
+    // Site uses PHP server-side validation, so an empty submission would POST;
+    // that POST is blocked above, and the user must still be on a Best Wave page
     await page.waitForLoadState('domcontentloaded').catch(() => {});
     expect(
       page.url().toLowerCase(),
